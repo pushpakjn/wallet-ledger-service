@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: wallet-postgres
+    environment:
+      POSTGRES_USER: dinouser
+      POSTGRES_PASSWORD: dinopassword
+      POSTGRES_DB: walletdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # This mounts your seed file to auto-run on startup
+      - ./src/main/resources/seed.sql:/docker-entrypoint-initdb.d/seed.sql
+    networks:
+      - wallet-network
+
+  wallet-app:
+    build: .
+    container_name: wallet-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/walletdb
+      - SPRING_DATASOURCE_USERNAME=dinouser
+      - SPRING_DATASOURCE_PASSWORD=dinopassword
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=validate # We use seed.sql, so Hibernate shouldn't modify tables
+    depends_on:
+      - postgres-db
+    networks:
+      - wallet-network
+
+networks:
+  wallet-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
